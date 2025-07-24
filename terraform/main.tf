@@ -37,10 +37,29 @@ resource "aws_iam_role" "codepipeline_role" {
   assume_role_policy = data.aws_iam_policy_document.codepipeline_assume.json
 }
 
-resource "aws_iam_role_policy_attachment" "codepipeline_policy_attach" {
-  role       = aws_iam_role.codepipeline_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AWSCodePipelineFullAccess"
+resource "aws_iam_role_policy" "codepipeline_inline_policy" {
+  name = "codepipeline-inline-policy"
+  role = aws_iam_role.codepipeline_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect   = "Allow",
+        Action   = [
+          "codepipeline:*",
+          "codebuild:*",
+          "codedeploy:*",
+          "s3:*",
+          "iam:PassRole"
+        ],
+        Resource = "*"
+      }
+    ]
+  })
 }
+
+
 
 # CodeBuild Role
 data "aws_iam_policy_document" "codebuild_assume" {
@@ -123,9 +142,10 @@ resource "aws_codedeploy_deployment_group" "devsecops_group" {
   service_role_arn      = aws_iam_role.codedeploy_role.arn
 
   deployment_style {
-    deployment_option = "WITH_TRAFFIC_CONTROL"
-    deployment_type   = "BLUE_GREEN"
-  }
+  deployment_option = "WITHOUT_TRAFFIC_CONTROL"
+  deployment_type   = "IN_PLACE"
+}
+
 
   ec2_tag_set {
     ec2_tag_filter {
